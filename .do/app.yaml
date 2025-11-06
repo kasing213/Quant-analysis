@@ -83,29 +83,9 @@ services:
         value: "true"
         scope: RUN_TIME
 
-      # Database connection (auto-populated by DigitalOcean)
+      # Database connection (Supabase PostgreSQL)
       - key: DATABASE_URL
-        value: "${trading-postgres.DATABASE_URL}"
-        scope: RUN_TIME
-
-      - key: POSTGRES_HOST
-        value: "${trading-postgres.HOSTNAME}"
-        scope: RUN_TIME
-
-      - key: POSTGRES_PORT
-        value: "${trading-postgres.PORT}"
-        scope: RUN_TIME
-
-      - key: POSTGRES_DB
-        value: "${trading-postgres.DATABASE}"
-        scope: RUN_TIME
-
-      - key: POSTGRES_USER
-        value: "${trading-postgres.USERNAME}"
-        scope: RUN_TIME
-
-      - key: POSTGRES_PASSWORD
-        value: "${trading-postgres.PASSWORD}"
+        value: "YOUR_SUPABASE_CONNECTION_STRING"  # Replace with your Supabase URL
         scope: RUN_TIME
         type: SECRET
 
@@ -170,14 +150,13 @@ services:
         value: "500"
         scope: RUN_TIME
 
-# Managed PostgreSQL Database
-databases:
-  - name: trading-postgres
-    engine: PG
-    version: "15"
-    production: false  # false = dev DB ($15/month), true = production DB ($60+/month)
-    # Dev DB specs: 1GB RAM, 10GB storage, 25 connections
-    # To upgrade to production, set production: true
+# Database removed - Using Supabase (free tier)
+# To add DigitalOcean managed database later, uncomment below:
+# databases:
+#   - name: trading-postgres
+#     engine: PG
+#     version: "15"
+#     production: false  # false = dev DB ($15/month), true = production DB ($60+/month)
 
 # Redis Cache (included with app, no extra cost)
 workers:
