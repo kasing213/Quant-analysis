@@ -1,0 +1,486 @@
+/* Chart Container Styles */
+.chart-wrapper {
+    position: relative;
+    background: var(--bg-primary);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-light);
+}
+
+.chart-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.chart-controls {
+    display: flex;
+    gap: var(--spacing-sm);
+    align-items: center;
+}
+
+.chart-control {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    color: var(--text-secondary);
+}
+
+.chart-control:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.chart-control.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+/* Chart Loading States */
+.chart-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
+.chart-loading .spinner {
+    margin-right: var(--spacing-sm);
+}
+
+.chart-error {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+    color: var(--danger-color);
+    font-size: 0.875rem;
+    text-align: center;
+    padding: var(--spacing-lg);
+}
+
+.chart-no-data {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    text-align: center;
+}
+
+.chart-no-data .icon {
+    font-size: 2rem;
+    margin-bottom: var(--spacing-sm);
+    opacity: 0.5;
+}
+
+/* Plotly Chart Customizations */
+.js-plotly-plot {
+    background: transparent !important;
+}
+
+.js-plotly-plot .plotly {
+    background: transparent !important;
+}
+
+.js-plotly-plot .main-svg {
+    background: transparent !important;
+}
+
+/* Dark mode adjustments for Plotly */
+[data-theme="dark"] .js-plotly-plot text {
+    fill: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .js-plotly-plot .xtick text,
+[data-theme="dark"] .js-plotly-plot .ytick text {
+    fill: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .js-plotly-plot .xgrid,
+[data-theme="dark"] .js-plotly-plot .ygrid {
+    stroke: var(--border-color) !important;
+}
+
+[data-theme="dark"] .js-plotly-plot .subplot {
+    fill: transparent !important;
+}
+
+/* Chart.js Customizations */
+.chartjs-render-monitor {
+    background: transparent !important;
+}
+
+/* Mini Chart Styles */
+.mini-chart {
+    height: 60px;
+    width: 100%;
+}
+
+.mini-chart canvas {
+    background: transparent !important;
+}
+
+/* Candlestick Chart Specific */
+.candlestick-chart {
+    height: 400px;
+    width: 100%;
+}
+
+.candlestick-controls {
+    display: flex;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+    flex-wrap: wrap;
+}
+
+.timeframe-btn {
+    padding: var(--spacing-xs) var(--spacing-md);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    color: var(--text-secondary);
+}
+
+.timeframe-btn:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.timeframe-btn.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+/* Performance Chart Styles */
+.performance-chart {
+    height: 400px;
+    position: relative;
+}
+
+.performance-legend {
+    display: flex;
+    justify-content: center;
+    gap: var(--spacing-lg);
+    margin-top: var(--spacing-md);
+    flex-wrap: wrap;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: 0.875rem;
+}
+
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+}
+
+.legend-text {
+    color: var(--text-secondary);
+}
+
+/* Allocation Chart (Pie/Donut) */
+.allocation-chart {
+    height: 300px;
+    position: relative;
+}
+
+.allocation-summary {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+}
+
+.allocation-total {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+}
+
+.allocation-label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-top: var(--spacing-xs);
+}
+
+/* Heatmap Styles */
+.heatmap-chart {
+    height: 300px;
+    width: 100%;
+}
+
+.heatmap-legend {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-md);
+}
+
+.heatmap-legend-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.heatmap-color-scale {
+    display: flex;
+    height: 16px;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+.heatmap-color-stop {
+    flex: 1;
+    min-width: 10px;
+}
+
+/* Volume Chart */
+.volume-chart {
+    height: 150px;
+    border-top: 1px solid var(--border-light);
+    margin-top: var(--spacing-md);
+    padding-top: var(--spacing-md);
+}
+
+/* Technical Indicators */
+.indicators-panel {
+    background: var(--bg-secondary);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--spacing-md);
+}
+
+.indicators-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: var(--spacing-md);
+}
+
+.indicator-item {
+    text-align: center;
+}
+
+.indicator-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    margin-bottom: var(--spacing-xs);
+}
+
+.indicator-value {
+    font-size: 1rem;
+    font-weight: 600;
+    font-family: var(--font-mono);
+    color: var(--text-primary);
+}
+
+.indicator-signal {
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    margin-top: var(--spacing-xs);
+}
+
+.indicator-signal.bullish {
+    background: rgba(5, 150, 105, 0.1);
+    color: var(--success-color);
+}
+
+.indicator-signal.bearish {
+    background: rgba(220, 38, 38, 0.1);
+    color: var(--danger-color);
+}
+
+.indicator-signal.neutral {
+    background: var(--bg-tertiary);
+    color: var(--text-muted);
+}
+
+/* Chart Annotations */
+.chart-annotation {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    pointer-events: none;
+    z-index: 100;
+    white-space: nowrap;
+}
+
+.chart-annotation::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -4px;
+    border: 4px solid transparent;
+    border-top-color: rgba(0, 0, 0, 0.8);
+}
+
+/* Chart Zoom Controls */
+.chart-zoom-controls {
+    position: absolute;
+    top: var(--spacing-md);
+    right: var(--spacing-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    z-index: 10;
+}
+
+.zoom-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    font-size: 1rem;
+    color: var(--text-secondary);
+}
+
+.zoom-btn:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+/* Chart Tooltips */
+.chart-tooltip {
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    box-shadow: var(--shadow-lg);
+    pointer-events: none;
+    z-index: 1000;
+    line-height: 1.4;
+}
+
+.tooltip-header {
+    font-weight: 600;
+    margin-bottom: var(--spacing-xs);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: var(--spacing-xs);
+}
+
+.tooltip-row {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    margin-bottom: 2px;
+}
+
+.tooltip-label {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.tooltip-value {
+    font-family: var(--font-mono);
+    font-weight: 500;
+}
+
+/* Responsive Chart Styles */
+@media (max-width: 768px) {
+    .chart {
+        height: 250px;
+    }
+
+    .chart-container.large .chart {
+        height: 300px;
+    }
+
+    .candlestick-chart {
+        height: 300px;
+    }
+
+    .performance-chart {
+        height: 300px;
+    }
+
+    .chart-controls {
+        flex-wrap: wrap;
+    }
+
+    .indicators-grid {
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: var(--spacing-sm);
+    }
+
+    .performance-legend {
+        flex-direction: column;
+        align-items: center;
+        gap: var(--spacing-sm);
+    }
+
+    .chart-zoom-controls {
+        position: static;
+        flex-direction: row;
+        justify-content: center;
+        margin-top: var(--spacing-md);
+    }
+}
+
+/* Chart Animation Classes */
+.chart-enter {
+    opacity: 0;
+    transform: scale(0.95);
+}
+
+.chart-enter-active {
+    opacity: 1;
+    transform: scale(1);
+    transition: opacity 300ms, transform 300ms;
+}
+
+.chart-exit {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.chart-exit-active {
+    opacity: 0;
+    transform: scale(0.95);
+    transition: opacity 300ms, transform 300ms;
+}

@@ -1,0 +1,30 @@
+# Testing Requirements
+# Install with: pip install -r requirements/test.txt
+
+# Core testing framework
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+pytest-timeout==2.2.0
+
+# HTTP testing
+httpx==0.25.2
+websockets==12.0
+
+# Mocking and fixtures
+faker==20.1.0
+factory-boy==3.3.0
+
+# Code quality
+flake8==6.1.0
+black==23.12.1
+isort==5.13.2
+mypy==1.7.1
+
+# Coverage reporting
+coverage[toml]==7.3.4
+
+# Performance testing (optional)
+# pytest-benchmark==4.0.0
+# locust==2.20.0

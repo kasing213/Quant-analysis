@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backtesting - Quantitative Trading Dashboard</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <!-- Plotly.js -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+    <!-- Custom CSS (following existing structure) -->
+    <link href="css/styles.css" rel="stylesheet">
+    <link href="css/dashboard.css" rel="stylesheet">
+    <link href="css/charts.css" rel="stylesheet">
+
+    <style>
+        .backtest-item {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .backtest-item:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .backtest-item.completed {
+            border-left: 4px solid #28a745;
+        }
+
+        .backtest-item.running {
+            border-left: 4px solid #007bff;
+        }
+
+        .backtest-item.failed {
+            border-left: 4px solid #dc3545;
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.375rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-completed { background-color: #d4edda; color: #155724; }
+        .status-running { background-color: #cce5ff; color: #004085; }
+        .status-failed { background-color: #f8d7da; color: #721c24; }
+
+        .symbols-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 0.5rem;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+            padding: 1rem;
+        }
+
+        .symbol-option {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem;
+            border-radius: 0.25rem;
+            transition: background-color 0.2s;
+        }
+
+        .symbol-option:hover {
+            background-color: #f8f9fa;
+        }
+
+        .symbol-option input[type="checkbox"] {
+            margin-right: 0.5rem;
+        }
+
+        .symbol-option label {
+            margin: 0;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+
+        .symbol-code {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .symbol-name {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+
+        .symbol-sector {
+            font-size: 0.75rem;
+            color: #868e96;
+        }
+
+        .parameters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .parameter-group label {
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-item {
+            text-align: center;
+            padding: 1rem;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-value.positive { color: #28a745; }
+        .metric-value.negative { color: #dc3545; }
+
+        .metric-label {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+
+        .quick-select-buttons {
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .quick-select-buttons .btn {
+            margin-right: 0.5rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .tip-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 0.75rem;
+        }
+
+        .tip-item:last-child {
+            margin-bottom: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation (following existing pattern) -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="index.html">
+                <i class="fas fa-chart-line me-2"></i>
+                Quantitative Trading Dashboard
+            </a>
+
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="index.html">
+                    <i class="fas fa-home me-1"></i>
+                    Dashboard
+                </a>
+                <a class="nav-link active" href="backtesting.html">
+                    <i class="fas fa-chart-bar me-1"></i>
+                    Backtesting
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container-fluid mt-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h1 class="h3 mb-0">
+                        <i class="fas fa-chart-bar text-primary me-2"></i>
+                        Backtesting Dashboard
+                    </h1>
+                    <button id="refresh-backtests" class="btn btn-outline-primary">
+                        <i class="fas fa-sync-alt me-1"></i>
+                        Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <ul class="nav nav-tabs mb-4" id="backtestingTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="new-backtest-tab" data-bs-toggle="tab" data-bs-target="#new-backtest" type="button" role="tab">
+                    <i class="fas fa-plus me-1"></i>
+                    New Backtest
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="results-tab" data-bs-toggle="tab" data-bs-target="#results" type="button" role="tab">
+                    <i class="fas fa-chart-line me-1"></i>
+                    Results
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content" id="backtestingTabContent">
+            <!-- New Backtest Tab -->
+            <div class="tab-pane fade show active" id="new-backtest" role="tabpanel">
+                <div class="row">
+                    <div class="col-lg-8">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-rocket me-2"></i>
+                                    Configure New Backtest
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="strategy-form">
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label for="strategy-select" class="form-label">Strategy</label>
+                                            <select id="strategy-select" name="strategy" class="form-select" required>
+                                                <option value="">Loading strategies...</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="initial_capital" class="form-label">Initial Capital</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">$</span>
+                                                <input type="number" id="initial_capital" name="initial_capital" class="form-control" value="100000" min="1000" step="1000" required>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label for="start_date" class="form-label">Start Date</label>
+                                            <input type="date" id="start_date" name="start_date" class="form-control" required>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="end_date" class="form-label">End Date</label>
+                                            <input type="date" id="end_date" name="end_date" class="form-control" required>
+                                        </div>
+                                    </div>
+
+                                    <!-- Strategy Parameters -->
+                                    <div id="strategy-parameters" class="mb-4">
+                                        <!-- Parameters will be inserted here -->
+                                    </div>
+
+                                    <!-- Symbol Selection -->
+                                    <div class="mb-4">
+                                        <label class="form-label">Select Assets</label>
+                                        <div id="symbols-container" class="symbols-grid">
+                                            <!-- Symbols will be loaded here -->
+                                        </div>
+                                    </div>
+
+                                    <div class="d-grid">
+                                        <button type="submit" class="btn btn-primary btn-lg">
+                                            <i class="fas fa-play me-2"></i>
+                                            Run Backtest
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-4">
+                        <!-- Quick Tips -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Backtesting Tips
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="tips-container">
+                                    <div class="tip-item">
+                                        <i class="fas fa-lightbulb text-warning me-2"></i>
+                                        <small>Use at least 2 years of data for meaningful results</small>
+                                    </div>
+                                    <div class="tip-item">
+                                        <i class="fas fa-lightbulb text-warning me-2"></i>
+                                        <small>Consider transaction costs in your strategy parameters</small>
+                                    </div>
+                                    <div class="tip-item">
+                                        <i class="fas fa-lightbulb text-warning me-2"></i>
+                                        <small>Test multiple assets to validate strategy robustness</small>
+                                    </div>
+                                    <div class="tip-item">
+                                        <i class="fas fa-lightbulb text-warning me-2"></i>
+                                        <small>Compare results against buy-and-hold benchmark</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Tab -->
+            <div class="tab-pane fade" id="results" role="tabpanel">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <h4>Backtest History</h4>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-end">
+                            <select id="results-filter" class="form-select" style="width: auto;">
+                                <option value="all">All Results</option>
+                                <option value="completed">Completed Only</option>
+                                <option value="running">Running</option>
+                                <option value="failed">Failed</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="backtest-history" class="backtest-history-container">
+                    <div class="text-center py-5">
+                        <i class="fas fa-chart-bar fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">Loading backtest history...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Custom JS (following existing structure) -->
+    <script src="js/utils.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/backtesting.js"></script>
+
+    <script>
+        // Set default dates
+        document.addEventListener('DOMContentLoaded', function() {
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setFullYear(endDate.getFullYear() - 2); // 2 years ago
+
+            document.getElementById('start_date').value = startDate.toISOString().split('T')[0];
+            document.getElementById('end_date').value = endDate.toISOString().split('T')[0];
+        });
+    </script>
+</body>
+</html>

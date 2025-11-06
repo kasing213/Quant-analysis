@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantitative Trading Dashboard</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="stylesheet" href="/static/css/charts.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/plotly.js@2.27.0/dist/plotly.min.js"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <h1>🎯 Quant Dashboard</h1>
+                    <span class="version">v2.0</span>
+                </div>
+                <div class="header-controls">
+                    <div class="pipeline-selector">
+                        <label for="pipelineSelect">📡 Data Source:</label>
+                        <select id="pipelineSelect" class="pipeline-select">
+                            <option value="binance_paper">Binance Paper Trading</option>
+                            <option value="binance_live">Binance Live Trading</option>
+                        </select>
+                        <span class="pipeline-status" id="pipelineStatus">
+                            <span class="pipeline-badge" id="pipelineBadge">PAPER</span>
+                        </span>
+                    </div>
+                    <div class="status-indicator" id="connectionStatus">
+                        <span class="status-dot" id="statusDot"></span>
+                        <span id="statusText">Connecting...</span>
+                    </div>
+                    <button class="refresh-btn" id="refreshBtn">🔄 Refresh</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="sidebar-section">
+                    <h3>📊 Portfolio Overview</h3>
+                    <div class="portfolio-stats" id="portfolioStats">
+                        <div class="stat-item">
+                            <span class="stat-label">Total Value</span>
+                            <span class="stat-value" id="totalValue">$0.00</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Daily P&L</span>
+                            <span class="stat-value" id="dailyPnL">$0.00</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Total Return</span>
+                            <span class="stat-value" id="totalReturn">0.00%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3>📈 Watchlist</h3>
+                    <div class="watchlist-controls">
+                        <input type="text" id="addStockInput" placeholder="Add symbol (e.g., AAPL)" maxlength="6">
+                        <button id="addStockBtn">Add</button>
+                    </div>
+                    <div class="watchlist" id="watchlist">
+                        <!-- Dynamic watchlist items -->
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3>⚙️ Settings</h3>
+                    <div class="settings-group">
+                        <label>
+                            <input type="checkbox" id="autoRefresh" checked>
+                            Auto Refresh (30s)
+                        </label>
+                        <label>
+                            <input type="checkbox" id="soundAlerts">
+                            Sound Alerts
+                        </label>
+                        <label>
+                            <input type="checkbox" id="darkMode">
+                            Dark Mode
+                        </label>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3>🔧 Pipeline</h3>
+                    <div class="pipeline-selector">
+                        <div class="pipeline-status" id="pipelineStatus">
+                            <span class="pipeline-label">Current:</span>
+                            <span class="pipeline-name" id="currentPipeline">Loading...</span>
+                        </div>
+                        <select id="pipelineSelect" class="pipeline-dropdown">
+                            <option value="">Select Pipeline...</option>
+                        </select>
+                        <button id="switchPipelineBtn" class="btn-sm btn-primary" style="width: 100%; margin-top: 8px;" disabled>
+                            Switch Pipeline
+                        </button>
+                        <div class="pipeline-warning" id="pipelineWarning" style="display: none;">
+                            <small>⚠️ Server restart required after switching</small>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Dashboard Content -->
+            <main class="dashboard">
+                <!-- Tab Navigation -->
+                <div class="tab-navigation">
+                    <button class="tab-btn active" data-tab="overview">📊 Overview</button>
+                    <button class="tab-btn" data-tab="performance">📈 Performance</button>
+                    <button class="tab-btn" data-tab="positions">💼 Positions</button>
+                    <button class="tab-btn" data-tab="trades">📋 Trades</button>
+                    <button class="tab-btn" data-tab="analytics">🎯 Analytics</button>
+                </div>
+
+                <!-- Tab Content -->
+                <div class="tab-content">
+                    <!-- Overview Tab -->
+                    <div class="tab-pane active" id="overview">
+                        <div class="metrics-grid">
+                            <div class="metric-card">
+                                <h4>Portfolio Value</h4>
+                                <div class="metric-value" id="portfolioValue">$0.00</div>
+                                <div class="metric-change" id="portfolioChange">+0.00%</div>
+                            </div>
+                            <div class="metric-card">
+                                <h4>Active Positions</h4>
+                                <div class="metric-value" id="activePositions">0</div>
+                                <div class="metric-change" id="positionsChange">+0</div>
+                            </div>
+                            <div class="metric-card">
+                                <h4>Today's P&L</h4>
+                                <div class="metric-value" id="todayPnL">$0.00</div>
+                                <div class="metric-change" id="pnlChange">+0.00%</div>
+                            </div>
+                            <div class="metric-card">
+                                <h4>Cash Balance</h4>
+                                <div class="metric-value" id="cashBalance">$0.00</div>
+                                <div class="metric-change" id="cashChange">+0.00%</div>
+                            </div>
+                        </div>
+
+                        <div class="charts-row">
+                            <div class="chart-container">
+                                <h4>Portfolio Performance</h4>
+                                <div id="portfolioChart" class="chart"></div>
+                            </div>
+                            <div class="chart-container">
+                                <h4>Asset Allocation</h4>
+                                <div id="allocationChart" class="chart"></div>
+                            </div>
+                        </div>
+
+                        <div class="real-time-data">
+                            <h4>Real-time Market Data</h4>
+                            <div class="market-data-grid" id="marketDataGrid">
+                                <!-- Dynamic market data -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Performance Tab -->
+                    <div class="tab-pane" id="performance">
+                        <div class="performance-controls">
+                            <select id="performancePeriod">
+                                <option value="1d">1 Day</option>
+                                <option value="1w">1 Week</option>
+                                <option value="1m">1 Month</option>
+                                <option value="3m" selected>3 Months</option>
+                                <option value="6m">6 Months</option>
+                                <option value="1y">1 Year</option>
+                                <option value="ytd">YTD</option>
+                            </select>
+                            <select id="benchmarkSelect">
+                                <option value="SPY" selected>S&P 500 (SPY)</option>
+                                <option value="QQQ">NASDAQ (QQQ)</option>
+                                <option value="IWM">Russell 2000 (IWM)</option>
+                            </select>
+                        </div>
+                        <div class="performance-charts">
+                            <div class="chart-container large">
+                                <h4>Cumulative Returns vs Benchmark</h4>
+                                <div id="performanceChart" class="chart"></div>
+                            </div>
+                        </div>
+                        <div class="performance-metrics">
+                            <div class="metrics-table" id="performanceMetrics">
+                                <!-- Dynamic performance metrics -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Positions Tab -->
+                    <div class="tab-pane" id="positions">
+                        <div class="positions-header">
+                            <h4>Current Positions</h4>
+                            <div class="positions-controls">
+                                <button class="btn-secondary" id="exportPositions">Export</button>
+                                <button class="btn-primary" id="rebalanceBtn">Rebalance</button>
+                            </div>
+                        </div>
+                        <div class="positions-table-container">
+                            <table class="positions-table" id="positionsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Symbol</th>
+                                        <th>Quantity</th>
+                                        <th>Avg Cost</th>
+                                        <th>Current Price</th>
+                                        <th>Market Value</th>
+                                        <th>Unrealized P&L</th>
+                                        <th>% Change</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Dynamic positions -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Trades Tab -->
+                    <div class="tab-pane" id="trades">
+                        <div class="trades-header">
+                            <h4>Trade History</h4>
+                            <div class="trades-controls">
+                                <input type="date" id="tradeFromDate">
+                                <input type="date" id="tradeToDate">
+                                <select id="tradeTypeFilter">
+                                    <option value="all">All Trades</option>
+                                    <option value="buy">Buy Orders</option>
+                                    <option value="sell">Sell Orders</option>
+                                </select>
+                                <button class="btn-secondary" id="filterTrades">Filter</button>
+                            </div>
+                        </div>
+                        <div class="trades-table-container">
+                            <table class="trades-table" id="tradesTable">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Symbol</th>
+                                        <th>Type</th>
+                                        <th>Quantity</th>
+                                        <th>Price</th>
+                                        <th>Total</th>
+                                        <th>Status</th>
+                                        <th>P&L</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Dynamic trades -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Analytics Tab -->
+                    <div class="tab-pane" id="analytics">
+                        <div class="analytics-grid">
+                            <div class="analytics-card">
+                                <h4>Risk Metrics</h4>
+                                <div class="risk-metrics" id="riskMetrics">
+                                    <!-- Dynamic risk metrics -->
+                                </div>
+                            </div>
+                            <div class="analytics-card">
+                                <h4>Performance Analytics</h4>
+                                <div class="performance-analytics" id="performanceAnalytics">
+                                    <!-- Dynamic performance analytics -->
+                                </div>
+                            </div>
+                        </div>
+                        <div class="charts-row">
+                            <div class="chart-container">
+                                <h4>Rolling Sharpe Ratio</h4>
+                                <div id="sharpeChart" class="chart"></div>
+                            </div>
+                            <div class="chart-container">
+                                <h4>Drawdown Analysis</h4>
+                                <div id="drawdownChart" class="chart"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal" id="tradeModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Place Trade</h3>
+                <button class="modal-close" id="closeTradeModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="tradeForm">
+                    <div class="form-group">
+                        <label for="tradeSymbol">Symbol</label>
+                        <input type="text" id="tradeSymbol" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="tradeType">Type</label>
+                        <select id="tradeType" required>
+                            <option value="BUY">Buy</option>
+                            <option value="SELL">Sell</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="tradeQuantity">Quantity</label>
+                        <input type="number" id="tradeQuantity" required min="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="orderType">Order Type</label>
+                        <select id="orderType" required>
+                            <option value="MKT">Market</option>
+                            <option value="LMT">Limit</option>
+                            <option value="STP">Stop</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="limitPriceGroup" style="display: none;">
+                        <label for="limitPrice">Limit Price</label>
+                        <input type="number" id="limitPrice" step="0.01">
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn-secondary" id="cancelTrade">Cancel</button>
+                        <button type="submit" class="btn-primary">Place Trade</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/static/js/utils.js"></script>
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/charts.js"></script>
+    <script src="/static/js/dashboard.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

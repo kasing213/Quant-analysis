@@ -1,0 +1,55 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'tiktok-analyzing'
+    environment: 'production'
+
+scrape_configs:
+  # API Service Metrics
+  # Use 'api:8000' when API runs in Docker, or 'host.docker.internal:8000' for local dev
+  - job_name: 'api'
+    scrape_interval: 10s
+    static_configs:
+      # Docker container name (when running in Docker)
+      - targets: ['api:8000']
+        labels:
+          env: 'docker'
+      # Local development (when running via ./start.sh or python)
+      - targets: ['host.docker.internal:8000']
+        labels:
+          env: 'local'
+    metrics_path: '/metrics'
+
+  # Trading Bot Metrics
+  - job_name: 'bot'
+    scrape_interval: 10s
+    static_configs:
+      # Docker container name
+      - targets: ['bot:8001']
+        labels:
+          env: 'docker'
+      # Local development
+      - targets: ['host.docker.internal:8001']
+        labels:
+          env: 'local'
+    metrics_path: '/metrics'
+
+  # Redis Exporter (if enabled)
+  - job_name: 'redis'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    # Uncomment if you add redis-exporter to docker-compose
+
+  # Postgres Exporter (if enabled)
+  - job_name: 'postgres'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    # Uncomment if you add postgres-exporter to docker-compose
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

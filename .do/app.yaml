@@ -1,0 +1,210 @@
+# DigitalOcean App Platform Specification
+# Deploy your quantitative trading dashboard with 24/7 runtime
+#
+# To deploy:
+# 1. Install doctl: https://docs.digitalocean.com/reference/doctl/how-to/install/
+# 2. Authenticate: doctl auth init
+# 3. Deploy: doctl apps create --spec .do/app.yaml
+#
+# Or use the DigitalOcean web console and upload this file
+# This spec is configured for pre-built container images so you can deploy
+# services that live in separate repositories.
+
+name: trading-dashboard
+region: nyc
+features:
+  - buildpack-stack=ubuntu-22
+
+# Environment-wide settings
+envs:
+  - key: ENVIRONMENT
+    value: "production"
+    scope: RUN_TIME
+  - key: LOG_LEVEL
+    value: "INFO"
+    scope: RUN_TIME
+  - key: CURRENT_PIPELINE
+    value: "binance_paper"  # Change to binance_live for real trading
+    scope: RUN_TIME
+
+# Main API Service
+services:
+  - name: api
+    # Point to the container image that contains your API service.
+    # Push the image from the repo that owns the API code (see deployment guide).
+    image:
+      registry_type: DOCR  # Use DOCKER_HUB if you host the image on Docker Hub
+      repository: your-registry/trading-api  # registry/repo-name in DOCR
+      tag: latest  # Update to the tag you want to deploy
+
+    # Instance sizing
+    instance_size_slug: basic-xxs  # $12/month (512MB RAM, 1 vCPU)
+    # Upgrade options:
+    # - basic-xs: $24/month (1GB RAM)
+    # - basic-s: $48/month (2GB RAM) - Recommended for production
+
+    instance_count: 1
+
+    http_port: 8000
+
+    # Health check
+    health_check:
+      http_path: /health
+      initial_delay_seconds: 30
+      period_seconds: 10
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 3
+
+    # Routes (your API endpoints)
+    routes:
+      - path: /
+
+    # Environment variables
+    envs:
+      # Binance API (use DigitalOcean Secrets or Environment Variables)
+      - key: BINANCE_TESTNET_API_KEY
+        value: "YOUR_TESTNET_KEY"  # Replace with your key
+        scope: RUN_TIME
+        type: SECRET
+
+      - key: BINANCE_TESTNET_API_SECRET
+        value: "YOUR_TESTNET_SECRET"  # Replace with your secret
+        scope: RUN_TIME
+        type: SECRET
+
+      - key: BINANCE_TESTNET
+        value: "true"
+        scope: RUN_TIME
+
+      - key: BINANCE_TEST_MODE
+        value: "true"
+        scope: RUN_TIME
+
+      # Database connection (auto-populated by DigitalOcean)
+      - key: DATABASE_URL
+        value: "${trading-postgres.DATABASE_URL}"
+        scope: RUN_TIME
+
+      - key: POSTGRES_HOST
+        value: "${trading-postgres.HOSTNAME}"
+        scope: RUN_TIME
+
+      - key: POSTGRES_PORT
+        value: "${trading-postgres.PORT}"
+        scope: RUN_TIME
+
+      - key: POSTGRES_DB
+        value: "${trading-postgres.DATABASE}"
+        scope: RUN_TIME
+
+      - key: POSTGRES_USER
+        value: "${trading-postgres.USERNAME}"
+        scope: RUN_TIME
+
+      - key: POSTGRES_PASSWORD
+        value: "${trading-postgres.PASSWORD}"
+        scope: RUN_TIME
+        type: SECRET
+
+      # Redis connection (auto-populated)
+      - key: REDIS_HOST
+        value: "${trading-redis.HOSTNAME}"
+        scope: RUN_TIME
+
+      - key: REDIS_PORT
+        value: "${trading-redis.PORT}"
+        scope: RUN_TIME
+
+      - key: REDIS_PASSWORD
+        value: "${trading-redis.PASSWORD}"
+        scope: RUN_TIME
+        type: SECRET
+
+      # Application settings
+      - key: API_HOST
+        value: "0.0.0.0"
+        scope: RUN_TIME
+
+      - key: API_PORT
+        value: "8000"
+        scope: RUN_TIME
+
+      # Bot configuration
+      - key: BINANCE_ENABLE_BOTS
+        value: "false"  # Set to "true" to enable automated trading
+        scope: RUN_TIME
+
+      - key: BINANCE_ENABLE_MARKET_DATA
+        value: "true"
+        scope: RUN_TIME
+
+      - key: ENABLE_DASHBOARD_FIXTURES
+        value: "true"
+        scope: RUN_TIME
+
+      - key: BINANCE_DASHBOARD_SYMBOLS
+        value: "BTCUSDT,ETHUSDT,BNBUSDT"
+        scope: RUN_TIME
+
+      - key: TRADING_PAIRS
+        value: "BTCUSDT,ETHUSDT,BNBUSDT"
+        scope: RUN_TIME
+
+      # Risk management
+      - key: MAX_POSITION_SIZE
+        value: "100"
+        scope: RUN_TIME
+
+      - key: STOP_LOSS_PERCENTAGE
+        value: "2"
+        scope: RUN_TIME
+
+      - key: TAKE_PROFIT_PERCENTAGE
+        value: "5"
+        scope: RUN_TIME
+
+      - key: MAX_DAILY_LOSS
+        value: "500"
+        scope: RUN_TIME
+
+# Managed PostgreSQL Database
+databases:
+  - name: trading-postgres
+    engine: PG
+    version: "15"
+    production: false  # false = dev DB ($15/month), true = production DB ($60+/month)
+    # Dev DB specs: 1GB RAM, 10GB storage, 25 connections
+    # To upgrade to production, set production: true
+
+# Redis Cache (included with app, no extra cost)
+workers:
+  - name: trading-redis
+    # Note: DigitalOcean App Platform doesn't have managed Redis
+    # For Redis, you have 3 options:
+    # 1. Use external Redis Cloud (recommended): https://redis.com/try-free/
+    # 2. Deploy Redis container as a worker (below)
+    # 3. Skip Redis (fallback to in-memory cache)
+
+    # Point to the container image that provides your Redis workload.
+    # You can keep an official Redis image or swap in a custom build.
+    image:
+      registry_type: DOCKER_HUB  # Redis image hosted on Docker Hub
+      registry: docker.io/library
+      repository: redis
+      tag: "7"
+
+    instance_size_slug: basic-xxs
+    instance_count: 1
+
+# Static site (optional - for frontend)
+# Uncomment if you want to host the frontend separately
+# static_sites:
+#   - name: frontend
+#     github:
+#       repo: YOUR_GITHUB_USERNAME/YOUR_REPO_NAME
+#       branch: master
+#     source_dir: /frontend
+#     output_dir: /
+#     routes:
+#       - path: /dashboard

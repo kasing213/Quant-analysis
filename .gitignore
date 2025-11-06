@@ -23,6 +23,7 @@ wheels/
 # Virtual Environment
 .venv/
 venv/
+venv_*/
 env/
 ENV/
 
@@ -39,14 +40,32 @@ Thumbs.db
 
 # Logs
 *.log
+logs/
 
 # Environment variables
 .env
+.env.local
+.env.production
+.env.development
+config/.env
+config/.env.*
+!config/.env.template
+
+# API Keys and Secrets
+**/api_keys/
+**/secrets/
+**/*_key
+**/*_secret
 
 # Temporary files
 *.tmp
 *.temp
 temp/
+
+# Cache directories
+.pytest_cache/
+.coverage
+htmlcov/
 
 # Matplotlib/Plot outputs
 *.png
