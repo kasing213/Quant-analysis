@@ -49,16 +49,16 @@ backtrader==1.9.78.123
 bt==0.2.9  # Additional backtesting framework
 
 # === Technical Analysis ===
-pandas-ta==0.4.71b0
-ta-lib==0.4.28  # Note: Requires compilation or conda install
+pandas-ta>=0.4.0
+# ta-lib==0.4.28  # Commented out - requires compilation, not available on all platforms
 
 # === Risk Management and Portfolio Optimization ===
-PyPortfolioOpt==1.5.6
-quantlib==1.40
-empyrical-reloaded==0.5.7  # Risk metrics
+PyPortfolioOpt>=1.5.0
+# quantlib - Commented out due to compilation requirements
+# empyrical-reloaded==0.5.7  # Commented out - may have numpy compatibility issues
 
 # === Machine Learning (Optional) ===
-scikit-learn==1.3.2
+scikit-learn>=1.3.0
 # tensorflow==2.15.0  # Uncomment if ML features needed
 # torch==2.1.1       # Uncomment if PyTorch needed
 
@@ -145,8 +145,8 @@ sqlparse==0.4.4        # SQL parsing utilities
 # worldbank==0.11.1    # World Bank data
 
 # === Portfolio Analytics ===
-pyfolio-reloaded==0.9.5   # Portfolio analysis
-zipline-reloaded==3.0.4   # Algorithmic trading
+# pyfolio-reloaded==0.9.5   # Portfolio analysis - commented out due to dependency conflicts
+# zipline-reloaded==3.0.4   # Algorithmic trading - commented out due to dependency conflicts
 
 # === Development Environment ===
 python-decouple==3.8   # Settings management
