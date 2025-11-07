@@ -162,8 +162,7 @@ watchdog==3.0.0        # File system monitoring
 #
 # 3. Development setup:
 #    pip install -r requirements_postgresql.txt
-#    pip install pre-commit  # For git ho
-oks
+#    pip install pre-commit  # For git hooks
 #
 # 4. Production setup:
 #    pip install --no-dev -r requirements_postgresql.txt
