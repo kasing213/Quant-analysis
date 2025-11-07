@@ -68,6 +68,13 @@ DEPLOYMENT_FIX.md
 *.tmp
 *.temp
 temp/
+nul
+
+# State files
+pipeline_state.txt
+*.txt
+!requirements.txt
+!requirements/*.txt
 
 # Cache directories
 .pytest_cache/

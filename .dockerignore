@@ -1,0 +1,77 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Documentation
+*.md
+!README.md
+docs/
+
+# Docker
+.dockerignore
+Dockerfile
+docker-compose*.yml
+
+# Data and logs
+*.log
+logs/
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# State files
+*.txt
+!requirements.txt
+!requirements/*.txt
+
+# Secrets
+.env
+.env.*
+*.pem
+*.key
+**/*_secret
+
+# Test files
+tests/
+test_*.py
+*_test.py
+pytest.ini
+.coverage
+htmlcov/
+
+# Monitoring
+prometheus.yml
+grafana/
+
+# Deployment docs
+DEPLOYMENT_*.md
+SECURITY_*.md
+COMMIT_*.md
+
+# DigitalOcean
+.do/
+
+# Temporary files
+*.tmp
+*.temp
+nul
