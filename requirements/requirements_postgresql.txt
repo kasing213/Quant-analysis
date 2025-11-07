@@ -30,8 +30,7 @@ SQLAlchemy==2.0.23
 alembic==1.13.1  # Database migrations
 
 # === Enhanced Data Processing ===
-# For better decimal handling in financial calculations
-decimal
+# Note: decimal is a built-in Python module, no installation needed
 
 # JSON handling for complex data structures
 orjson==3.9.10
@@ -43,9 +42,7 @@ pydantic==2.5.0
 # Memory profiling and monitoring
 psutil==5.9.6
 
-# Performance timing utilities
-cProfile
-timeit
+# Note: cProfile and timeit are built-in Python modules, no installation needed
 
 # === Backtesting Framework (Enhanced) ===
 backtrader==1.9.78.123
@@ -137,7 +134,7 @@ slack-sdk==3.26.1          # Slack notifications
 
 # === Configuration Management ===
 pyyaml==6.0.1          # YAML configuration files
-configparser           # Built-in, but listed for clarity
+# Note: configparser is a built-in Python module, no installation needed
 
 # === Database Utilities ===
 pgcli==4.0.1           # PostgreSQL command line interface
