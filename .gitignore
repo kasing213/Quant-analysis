@@ -58,6 +58,12 @@ config/.env.*
 **/*_secret
 .mcp.json
 
+# Deployment files with credentials
+.do/app.yaml.working
+READY_TO_DEPLOY.md
+SUPABASE_CREDENTIALS_NEEDED.md
+DEPLOYMENT_FIX.md
+
 # Temporary files
 *.tmp
 *.temp
