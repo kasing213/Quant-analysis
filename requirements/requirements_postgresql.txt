@@ -95,7 +95,7 @@ flake8==6.1.0          # Linting
 mypy==1.7.1            # Type checking
 
 # === Security ===
-cryptography==41.0.8   # For encryption/SSL
+cryptography==46.0.3   # For encryption/SSL
 python-dotenv==1.0.0   # Environment variable loading
 
 # === Jupyter Support (Development) ===
