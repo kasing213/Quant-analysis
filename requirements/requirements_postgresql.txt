@@ -53,8 +53,8 @@ pandas-ta==0.4.71b0
 ta-lib==0.4.28  # Note: Requires compilation or conda install
 
 # === Risk Management and Portfolio Optimization ===
-pypfopt==1.5.5
-quantlib==1.32
+PyPortfolioOpt==1.5.6
+quantlib==1.40
 empyrical-reloaded==0.5.7  # Risk metrics
 
 # === Machine Learning (Optional) ===
