@@ -37,7 +37,7 @@ pytz==2024.1
 
 # Backtesting (free alternatives)
 backtrader==1.9.78.123     # Free backtesting framework
-matplotlib==3.8.2          # For backtesting charts
+matplotlib>=3.9.0          # For backtesting charts (3.9+ supports numpy 2.x)
 # zipline-reloaded==3.0.4  # Zipline fork (free)
 
 # Risk Management
