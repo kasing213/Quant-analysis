@@ -50,11 +50,11 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 EXPOSE 8000
 
 # Use production ASGI server
+# Note: For multiple workers, use gunicorn with uvicorn workers instead
+# CMD ["gunicorn", "src.api.main:app", "--workers", "4", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000"]
 CMD ["uvicorn", "src.api.main:app", \
      "--host", "0.0.0.0", \
      "--port", "8000", \
-     "--workers", "4", \
-     "--worker-class", "uvicorn.workers.UvicornWorker", \
+     "--workers", "1", \
      "--access-log", \
-     "--log-level", "info", \
-     "--no-use-colors"]
+     "--log-level", "info"]

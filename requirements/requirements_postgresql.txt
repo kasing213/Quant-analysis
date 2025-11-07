@@ -65,6 +65,7 @@ scikit-learn>=1.5.0
 # === API and Web Services ===
 fastapi>=0.115.0  # For building APIs
 uvicorn>=0.32.0   # ASGI server
+gunicorn>=23.0.0  # WSGI server (for production with multiple workers)
 
 # HTTP client
 httpx>=0.28.0
