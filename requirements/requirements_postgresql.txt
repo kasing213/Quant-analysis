@@ -49,7 +49,7 @@ backtrader==1.9.78.123
 bt==0.2.9  # Additional backtesting framework
 
 # === Technical Analysis ===
-pandas-ta==0.3.14b0
+pandas-ta==0.4.71b0
 ta-lib==0.4.28  # Note: Requires compilation or conda install
 
 # === Risk Management and Portfolio Optimization ===
