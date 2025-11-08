@@ -167,17 +167,21 @@ class BinanceDataManager:
 
     async def connect(self):
         """Initialize connections to WebSocket and Redis with retry logic"""
-        # Connect to Redis
+        # Connect to Redis (optional)
         redis_ok = await self._connect_redis()
         if not redis_ok:
-            raise ConnectionError("Failed to connect to Redis after all retries")
+            logger.warning("Failed to connect to Redis - continuing without Redis (data will not be cached)")
+            self._redis_connected = False
 
         # Connect to Binance WebSocket
         ws_ok = await self._connect_websocket()
         if not ws_ok:
             raise ConnectionError("Failed to connect to Binance WebSocket after all retries")
 
-        logger.info("Data Manager fully connected to Redis and Binance WebSocket")
+        if self._redis_connected:
+            logger.info("Data Manager fully connected to Redis and Binance WebSocket")
+        else:
+            logger.info("Data Manager connected to Binance WebSocket (Redis unavailable)")
 
     async def subscribe_symbol(self, symbol: str, interval: str = "1m"):
         """
@@ -203,16 +207,14 @@ class BinanceDataManager:
 
     async def _store_candle_to_redis(self, symbol: str, candle: Dict, interval: str):
         """Store candle data to Redis with error handling and reconnection"""
+        # Skip if Redis is not available
+        if not self._redis_connected:
+            logger.debug(f"Redis not available, skipping storage for {symbol} {interval}")
+            return
+
         max_attempts = 3
         for attempt in range(max_attempts):
             try:
-                # Check if Redis is connected
-                if not self._redis_connected:
-                    logger.warning("Redis not connected, attempting reconnection...")
-                    reconnected = await self._connect_redis()
-                    if not reconnected:
-                        logger.error("Failed to reconnect to Redis, skipping candle storage")
-                        return
 
                 # Redis key format: "candles:BTCUSDT:1m"
                 redis_key = f"candles:{symbol}:{interval}"
@@ -274,16 +276,14 @@ class BinanceDataManager:
         Returns:
             DataFrame with columns: timestamp, open, high, low, close, volume
         """
+        # Return empty DataFrame if Redis is not available
+        if not self._redis_connected:
+            logger.debug(f"Redis not available, cannot retrieve candles for {symbol}")
+            return pd.DataFrame()
+
         max_attempts = 3
         for attempt in range(max_attempts):
             try:
-                # Check Redis connection
-                if not self._redis_connected:
-                    logger.warning("Redis not connected, attempting reconnection...")
-                    reconnected = await self._connect_redis()
-                    if not reconnected:
-                        logger.error("Failed to reconnect to Redis")
-                        return pd.DataFrame()
 
                 redis_key = f"candles:{symbol}:{interval}"
 
