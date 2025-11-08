@@ -982,8 +982,13 @@ async def get_historical_data(
             detail=f"Failed to fetch historical data for {symbol}: {str(exc)}"
         )
 
-# Serve static files for the frontend
-app.mount("/static", StaticFiles(directory="frontend"), name="static")
+# Serve static files for the frontend (only if frontend directory exists)
+frontend_dir = Path(__file__).resolve().parents[2] / "frontend"
+if frontend_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(frontend_dir)), name="static")
+    logger.info(f"Frontend static files mounted from: {frontend_dir}")
+else:
+    logger.warning(f"Frontend directory not found at {frontend_dir}, static files not mounted")
 
 @app.get("/", tags=["Frontend"])
 async def serve_frontend():
