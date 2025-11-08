@@ -19,10 +19,17 @@ from ..database.pg_config import DatabaseConfig, PostgreSQLManager, get_database
 logger = logging.getLogger(__name__)
 
 # PostgreSQL Database Configuration
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql+asyncpg://trader:trading_secure_password_2024@localhost:5432/trading_db"
-)
+# Ensure asyncpg dialect is used for async operations
+DATABASE_URL = os.getenv("DATABASE_URL", "")
+if DATABASE_URL and not DATABASE_URL.startswith("postgresql+asyncpg://"):
+    # Convert postgresql:// to postgresql+asyncpg:// for SQLAlchemy async
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+    # Remove pgbouncer parameter if present (not compatible with asyncpg)
+    if "?pgbouncer=" in DATABASE_URL:
+        DATABASE_URL = DATABASE_URL.split("?pgbouncer=")[0]
+elif not DATABASE_URL:
+    # Default for local development
+    DATABASE_URL = "postgresql+asyncpg://trader:trading_secure_password_2024@localhost:5432/trading_db"
 
 # Create async engine with connection pooling optimized for quantitative trading
 async_engine = create_async_engine(
