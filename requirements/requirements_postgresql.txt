@@ -82,6 +82,7 @@ cachetools>=5.5.0      # Memory caching utilities
 # === Logging and Monitoring ===
 structlog>=24.4.0      # Structured logging
 prometheus-client>=0.21.0  # Metrics collection
+prometheus-fastapi-instrumentator>=7.0.0  # FastAPI Prometheus integration
 
 # === Testing Framework ===
 pytest>=8.3.0

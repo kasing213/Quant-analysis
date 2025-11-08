@@ -23,6 +23,13 @@ from .routers import portfolio, trades, positions, backtesting, bots, pipeline a
 from .pipeline_config import get_pipeline_config
 from src.binance import BotOrchestrator, BinanceDataManager
 
+# Initialize logging first before any other imports that might need it
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
 # Prometheus metrics
 try:
     from prometheus_client import make_asgi_app
@@ -31,18 +38,15 @@ try:
         initialize_metrics,
         WEBSOCKET_CONNECTIONS,
         MARKET_DATA_UPDATES,
-        record_market_data_update
+        record_market_data_update,
+        update_websocket_subscribers,
+        record_websocket_message,
+        record_websocket_broadcast
     )
     PROMETHEUS_AVAILABLE = True
 except ImportError:
     PROMETHEUS_AVAILABLE = False
     logger.warning("Prometheus client not available, metrics disabled")
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
 
 # Application startup time for uptime calculation
 startup_time = time.time()
@@ -525,11 +529,21 @@ class ConnectionManager:
             self.subscriptions[channel] = []
         if websocket not in self.subscriptions[channel]:
             self.subscriptions[channel].append(websocket)
-        logger.info(f"WebSocket subscribed to {channel}")
+
+        # Update subscriber metrics
+        if PROMETHEUS_AVAILABLE:
+            update_websocket_subscribers(channel, len(self.subscriptions[channel]))
+
+        logger.info(f"WebSocket subscribed to {channel}. Total subscribers: {len(self.subscriptions[channel])}")
 
     def unsubscribe(self, websocket: WebSocket, channel: str):
         if channel in self.subscriptions and websocket in self.subscriptions[channel]:
             self.subscriptions[channel].remove(websocket)
+
+            # Update subscriber metrics
+            if PROMETHEUS_AVAILABLE:
+                update_websocket_subscribers(channel, len(self.subscriptions[channel]))
+
         logger.info(f"WebSocket unsubscribed from {channel}")
 
     async def send_personal_message(self, message: dict, websocket: WebSocket):
@@ -540,10 +554,19 @@ class ConnectionManager:
 
     async def broadcast_to_channel(self, message: dict, channel: str):
         if channel in self.subscriptions:
+            start_time = time.time()
             disconnected = []
+            message_count = 0
+
             for websocket in self.subscriptions[channel]:
                 try:
                     await websocket.send_text(json.dumps(message))
+                    message_count += 1
+
+                    # Record message sent
+                    if PROMETHEUS_AVAILABLE:
+                        record_websocket_message("sent", channel)
+
                 except Exception as e:
                     logger.error(f"Failed to send message to websocket: {e}")
                     disconnected.append(websocket)
@@ -551,6 +574,12 @@ class ConnectionManager:
             # Remove disconnected websockets
             for ws in disconnected:
                 self.disconnect(ws)
+
+            # Record broadcast timing
+            if PROMETHEUS_AVAILABLE and message_count > 0:
+                duration = time.time() - start_time
+                record_websocket_broadcast(channel, duration)
+                logger.debug(f"Broadcast to {channel}: {message_count} messages in {duration:.4f}s")
 
     async def broadcast(self, message: dict):
         disconnected = []
