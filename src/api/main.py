@@ -97,15 +97,21 @@ async def lifespan(app: FastAPI):
         service_summary = pipeline_config.get_service_summary()
         logger.info(f"Service configuration: {json.dumps(service_summary, indent=2)}")
 
-        # Initialize database connections
-        await init_db()
-        logger.info("Database initialization completed")
+        # Initialize database connections (optional - continue without DB if unavailable)
+        try:
+            await init_db()
+            logger.info("Database initialization completed")
 
-        # Test database connectivity
-        db_status = await test_db_connection()
-        if db_status["status"] != "healthy":
-            logger.error(f"Database health check failed: {db_status}")
-            raise Exception("Database connection failed during startup")
+            # Test database connectivity
+            db_status = await test_db_connection()
+            if db_status["status"] == "healthy":
+                logger.info("Database connection healthy")
+            else:
+                logger.warning(f"Database health check failed: {db_status}")
+                logger.warning("Continuing without database - some features may be limited")
+        except Exception as e:
+            logger.warning(f"Database initialization failed: {e}")
+            logger.warning("Continuing without database - API will run in limited mode")
 
         logger.info("Portfolio API startup completed successfully")
 
