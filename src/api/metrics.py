@@ -2,10 +2,36 @@
 Prometheus metrics for monitoring the trading system.
 """
 import logging
-from typing import Dict, Any
-from prometheus_client import Counter, Gauge, Histogram, Info
+from typing import Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
+
+# Make prometheus_client optional for deployment environments
+try:
+    from prometheus_client import Counter, Gauge, Histogram, Info
+    PROMETHEUS_AVAILABLE = True
+except ImportError:
+    logger.warning("prometheus_client not available - metrics will be disabled")
+    PROMETHEUS_AVAILABLE = False
+    # Create no-op classes when prometheus is not available
+    class Counter:
+        def __init__(self, *args, **kwargs): pass
+        def labels(self, **kwargs): return self
+        def inc(self, amount=1): pass
+
+    class Gauge:
+        def __init__(self, *args, **kwargs): pass
+        def labels(self, **kwargs): return self
+        def set(self, value): pass
+
+    class Histogram:
+        def __init__(self, *args, **kwargs): pass
+        def labels(self, **kwargs): return self
+        def observe(self, value): pass
+
+    class Info:
+        def __init__(self, *args, **kwargs): pass
+        def info(self, data): pass
 
 # API Metrics (FastAPI Instrumentator provides basic HTTP metrics)
 # We add custom business metrics here
@@ -66,6 +92,37 @@ WEBSOCKET_CONNECTIONS = Gauge(
     ['endpoint']  # market_data, bot_updates, etc.
 )
 
+WEBSOCKET_SUBSCRIBERS = Gauge(
+    'websocket_subscribers_total',
+    'Number of subscribers per channel',
+    ['channel']  # market_data, bot_updates, portfolio, etc.
+)
+
+WEBSOCKET_MESSAGES = Counter(
+    'websocket_messages_total',
+    'Total number of WebSocket messages sent/received',
+    ['direction', 'channel']  # direction: sent/received, channel: market_data, bot_updates, etc.
+)
+
+WEBSOCKET_BROADCAST_DURATION = Histogram(
+    'websocket_broadcast_duration_seconds',
+    'Time taken to broadcast messages to all subscribers',
+    ['channel'],
+    buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0]
+)
+
+WEBSOCKET_RECONNECTIONS = Counter(
+    'websocket_reconnections_total',
+    'Total number of WebSocket reconnection attempts',
+    ['source', 'status']  # source: binance, status: success/failure
+)
+
+WEBSOCKET_CONNECTION_STATUS = Gauge(
+    'websocket_connection_status',
+    'WebSocket connection status (1=connected, 0=disconnected)',
+    ['source']  # binance_testnet, binance_production
+)
+
 # Redis Metrics (custom)
 REDIS_OPERATIONS = Counter(
     'redis_operations_total',
@@ -76,6 +133,18 @@ REDIS_OPERATIONS = Counter(
 REDIS_CONNECTION_ERRORS = Counter(
     'redis_connection_errors_total',
     'Total number of Redis connection errors'
+)
+
+REDIS_CONNECTION_POOL_ACTIVE = Gauge(
+    'trading_redis_connection_pool_active',
+    'Redis connection pool status (1=active, 0=inactive)'
+)
+
+REDIS_OPERATION_DURATION = Histogram(
+    'trading_redis_operation_duration_seconds',
+    'Redis operation execution time',
+    ['operation'],
+    buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0]
 )
 
 # Database Metrics (custom)
@@ -101,6 +170,10 @@ SYSTEM_INFO = Info(
 
 def initialize_metrics():
     """Initialize system information metrics."""
+    if not PROMETHEUS_AVAILABLE:
+        logger.info("Prometheus not available - skipping metrics initialization")
+        return
+
     try:
         import platform
         SYSTEM_INFO.info({
@@ -230,3 +303,74 @@ def record_db_query(operation: str, table: str, duration_seconds: float, status:
         DB_QUERY_DURATION.labels(operation=operation, table=table).observe(duration_seconds)
     except Exception as e:
         logger.error(f"Error recording database query: {e}")
+
+
+def update_websocket_subscribers(channel: str, count: int):
+    """
+    Update the number of subscribers for a WebSocket channel.
+
+    Args:
+        channel: Channel name (market_data, bot_updates, portfolio, etc.)
+        count: Number of subscribers
+    """
+    try:
+        WEBSOCKET_SUBSCRIBERS.labels(channel=channel).set(count)
+    except Exception as e:
+        logger.error(f"Error updating WebSocket subscriber count: {e}")
+
+
+def record_websocket_message(direction: str, channel: str):
+    """
+    Record a WebSocket message sent or received.
+
+    Args:
+        direction: Message direction (sent/received)
+        channel: Channel name
+    """
+    try:
+        WEBSOCKET_MESSAGES.labels(direction=direction, channel=channel).inc()
+    except Exception as e:
+        logger.error(f"Error recording WebSocket message: {e}")
+
+
+def record_websocket_broadcast(channel: str, duration_seconds: float):
+    """
+    Record a WebSocket broadcast operation.
+
+    Args:
+        channel: Channel name
+        duration_seconds: Time taken to broadcast
+    """
+    try:
+        WEBSOCKET_BROADCAST_DURATION.labels(channel=channel).observe(duration_seconds)
+    except Exception as e:
+        logger.error(f"Error recording WebSocket broadcast: {e}")
+
+
+def record_websocket_reconnection(source: str, success: bool):
+    """
+    Record a WebSocket reconnection attempt.
+
+    Args:
+        source: Source of the WebSocket (e.g., 'binance')
+        success: Whether the reconnection was successful
+    """
+    try:
+        status = 'success' if success else 'failure'
+        WEBSOCKET_RECONNECTIONS.labels(source=source, status=status).inc()
+    except Exception as e:
+        logger.error(f"Error recording WebSocket reconnection: {e}")
+
+
+def update_websocket_connection_status(source: str, connected: bool):
+    """
+    Update the WebSocket connection status.
+
+    Args:
+        source: Source of the WebSocket (e.g., 'binance_testnet', 'binance_production')
+        connected: Whether the WebSocket is currently connected
+    """
+    try:
+        WEBSOCKET_CONNECTION_STATUS.labels(source=source).set(1 if connected else 0)
+    except Exception as e:
+        logger.error(f"Error updating WebSocket connection status: {e}")

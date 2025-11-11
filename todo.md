@@ -1,5 +1,213 @@
 # TODO
 
+## 🚨 CRITICAL - Railway Deployment Issues (2025-11-11)
+
+### **Status: Application Running, Domain Routing BROKEN** ❌
+
+**Symptoms:**
+- ✅ Application starts successfully: "Application startup complete"
+- ✅ Uvicorn running on http://0.0.0.0:8080
+- ✅ All services initialized: "Pipeline binance_paper services initialized successfully"
+- ❌ Railway domain returns "Not Found" error (404)
+- ❌ All endpoints return 404: `/`, `/docs`, `/health`
+- ❌ Container stops after successful startup
+
+**Critical Pain Points Identified:**
+
+### 1. **PORT Configuration Mismatch** 🔴 CRITICAL
+**Problem:** Application is listening on port 8080 in logs, but Railway may be expecting different port
+- Logs show: `Uvicorn running on http://0.0.0.0:8080`
+- Railway assigns dynamic PORT via environment variable
+- Need to verify Railway is setting PORT=8080
+
+**Fix Required:**
+- Check Railway dashboard → Service → Variables → Verify PORT is set
+- If not set, Railway defaults to 8000, causing mismatch
+- Add explicit PORT=8080 environment variable in Railway
+
+**Priority:** P0 - Blocking deployment
+
+---
+
+### 2. **Health Check Failure** 🔴 CRITICAL
+**Problem:** Railway health checks may be failing, causing container restarts
+- Healthcheck script uses: `curl -f http://localhost:${PORT:-8000}/health`
+- If PORT not set, defaults to 8000 (wrong)
+- Failed health checks = Railway kills container
+
+**Fix Required:**
+```bash
+# In Railway dashboard, verify environment variable:
+PORT=8080
+
+# Or update Dockerfile to use consistent port:
+CMD uvicorn src.api.main:app \
+     --host 0.0.0.0 \
+     --port 8000 \
+     --workers 1
+```
+
+**Files to Update:**
+- [Dockerfile](Dockerfile:59-64) - Either use $PORT consistently or hardcode 8000
+- [healthcheck.sh](healthcheck.sh:3) - Must match the port uvicorn binds to
+
+**Priority:** P0 - Blocking deployment
+
+---
+
+### 3. **Railway Domain Not Generated** 🟡 HIGH
+**Problem:** Railway may not have auto-generated a domain for the service
+- URL provided: `https://Quant-analysis-production.up.railway.app`
+- This could be project URL, not service URL
+- Each service needs its own domain
+
+**Fix Required:**
+1. Go to Railway dashboard → Project → Service
+2. Click "Settings" → "Networking"
+3. Click "Generate Domain" if no domain exists
+4. Verify domain points to the correct service
+5. Check if custom domain is configured vs public domain
+
+**Priority:** P0 - Blocking deployment
+
+---
+
+### 4. **Container Stopping After Startup** 🔴 CRITICAL
+**Problem:** Logs show "Stopping Container" even though app initialized successfully
+- This indicates Railway is killing the container
+- Likely causes:
+  - Health check failures (see #2)
+  - Memory/CPU limits exceeded
+  - Application crash after startup (check full logs)
+
+**Fix Required:**
+1. Check Railway logs for OOM (Out of Memory) errors
+2. Increase memory limit if needed (Settings → Resources)
+3. Review full deployment logs for Python exceptions after startup
+4. Check if WebSocket connection attempts are causing crashes
+
+**Files to Review:**
+- [src/api/main.py](src/api/main.py:1000-1050) - startup_event handler
+- [src/binance/data_manager.py](src/binance/data_manager.py) - WebSocket initialization
+
+**Priority:** P0 - Blocking deployment
+
+---
+
+### 5. **Missing Railway Environment Variables** 🟡 HIGH
+**Problem:** Railway may not have all required environment variables set
+- Application expects: DATABASE_URL, BINANCE_API_KEY, BINANCE_API_SECRET, etc.
+- Missing variables could cause silent failures after startup
+
+**Fix Required:**
+1. Copy all variables from [.env](.env) to Railway dashboard
+2. Critical variables to verify:
+   ```bash
+   DATABASE_URL=postgresql://postgres.wsqwoeqetggqkktkgoxo:Kasingchan223699.@aws-1-ap-southeast-2.pooler.supabase.com:5432/postgres
+   BINANCE_TESTNET=true
+   CURRENT_PIPELINE=binance_paper
+   REDIS_ENABLED=false
+   PORT=8080  # CRITICAL - May be missing
+   ```
+
+**Priority:** P0 - Blocking deployment
+
+---
+
+### 6. **Database Connection Issues** 🟡 MEDIUM
+**Problem:** Supabase connection may be failing in Railway environment
+- Railway runs on different network than local dev
+- IPv6 vs IPv4 connectivity differences
+- Connection pooler may have different behavior
+
+**Fix Required:**
+1. Check Railway logs for "Connection refused" or "connection timeout"
+2. Try switching to direct connection URL if pooler fails:
+   ```bash
+   DATABASE_URL=postgresql://postgres.wsqwoeqetggqkktkgoxo:Kasingchan223699.@db.wsqwoeqetggqkktkgoxo.supabase.co:5432/postgres
+   ```
+3. Verify Supabase allows connections from Railway IPs
+4. Check if Supabase has connection limits
+
+**Priority:** P1 - Could cause runtime failures
+
+---
+
+### 7. **Frontend Static Files Not Found** 🟢 LOW
+**Problem:** Root route `/` should serve frontend/index.html
+- 404 error suggests file not found or incorrect path
+- May be Docker COPY issue
+
+**Verify:**
+1. Check if frontend/ directory exists in container:
+   ```bash
+   railway run ls -la /app/frontend/
+   ```
+2. Verify [Dockerfile](Dockerfile:41) copies frontend correctly:
+   ```dockerfile
+   COPY --chown=appuser:appuser frontend/ ./frontend/
+   ```
+
+**Priority:** P2 - Frontend broken but API should work
+
+---
+
+## **Immediate Action Plan** 📋
+
+### **Step 1: Fix PORT Configuration** (15 minutes)
+1. Open Railway dashboard
+2. Navigate to Service → Variables
+3. Add environment variable: `PORT=8080`
+4. Redeploy service
+5. Check if health checks pass
+
+### **Step 2: Generate Service Domain** (5 minutes)
+1. Railway dashboard → Service → Settings → Networking
+2. Click "Generate Domain"
+3. Wait for domain to provision
+4. Test new domain URL
+
+### **Step 3: Review Full Deployment Logs** (10 minutes)
+1. Railway dashboard → Deployments → Latest deployment
+2. Click "View Logs"
+3. Search for:
+   - "Error"
+   - "Exception"
+   - "Failed"
+   - "Connection refused"
+   - "OOM" or "memory"
+4. Document any errors found
+
+### **Step 4: Verify Environment Variables** (10 minutes)
+1. Railway dashboard → Variables
+2. Compare with [.env](.env)
+3. Add any missing critical variables
+4. Especially: DATABASE_URL, BINANCE_TESTNET, CURRENT_PIPELINE, REDIS_ENABLED
+
+### **Step 5: Test Health Endpoint Locally** (5 minutes)
+```bash
+# Verify health endpoint works with Railway's port setup
+docker build -t test-railway .
+docker run -e PORT=8080 -p 8080:8080 test-railway
+
+# In another terminal:
+curl http://localhost:8080/health
+```
+
+---
+
+## **Verified Working Components** ✅
+
+1. ✅ **Redis Removal** - App runs without Redis dependency
+2. ✅ **Startup Optimization** - No 15-second Redis delay
+3. ✅ **Port Variable Expansion** - Dockerfile uses ${PORT:-8000} correctly
+4. ✅ **Healthcheck Script** - healthcheck.sh respects PORT variable
+5. ✅ **Database Configuration** - DATABASE_URL format correct for asyncpg
+6. ✅ **Application Code** - All routes exist, frontend files present
+7. ✅ **Pipeline Initialization** - binance_paper services initialize successfully
+
+---
+
 ## 🎉 Latest Completion (2025-11-11)
 
 ### ✅ **WebSocket Reconnection Metrics Integration - COMPLETED**

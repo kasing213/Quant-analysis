@@ -24,14 +24,43 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+def _parse_db_url() -> Dict[str, Any]:
+    """Parse DATABASE_URL into components"""
+    database_url = os.getenv('DATABASE_URL', '')
+    if not database_url:
+        return {}
+
+    try:
+        # Handle both postgresql:// and postgresql+asyncpg:// URLs
+        if database_url.startswith('postgresql+asyncpg://'):
+            url = database_url.replace('postgresql+asyncpg://', 'postgresql://')
+        else:
+            url = database_url
+
+        # Parse URL format: postgresql://username:password@host:port/database
+        from urllib.parse import urlparse, parse_qs
+        parsed = urlparse(url)
+
+        return {
+            'username': parsed.username or '',
+            'password': parsed.password or '',
+            'host': parsed.hostname or 'localhost',
+            'port': parsed.port or 5432,
+            'database': parsed.path.lstrip('/') if parsed.path else 'trading_db'
+        }
+    except Exception as e:
+        logger.warning(f"Failed to parse DATABASE_URL: {e}")
+        return {}
+
 @dataclass
 class DatabaseConfig:
     """Database configuration with environment variable support"""
-    host: str = field(default_factory=lambda: os.getenv('POSTGRES_HOST', 'localhost'))
-    port: int = field(default_factory=lambda: int(os.getenv('POSTGRES_PORT', '5432')))
-    database: str = field(default_factory=lambda: os.getenv('POSTGRES_DB', 'trading_db'))
-    username: str = field(default_factory=lambda: os.getenv('POSTGRES_USER', 'trader'))
-    password: str = field(default_factory=lambda: os.getenv('POSTGRES_PASSWORD', 'trading_secure_password_2024'))
+    # Parse DATABASE_URL if available, otherwise use individual env vars
+    host: str = field(default_factory=lambda: _parse_db_url().get('host', os.getenv('POSTGRES_HOST', 'localhost')))
+    port: int = field(default_factory=lambda: _parse_db_url().get('port', int(os.getenv('POSTGRES_PORT', '5432'))))
+    database: str = field(default_factory=lambda: _parse_db_url().get('database', os.getenv('POSTGRES_DB', 'trading_db')))
+    username: str = field(default_factory=lambda: _parse_db_url().get('username', os.getenv('POSTGRES_USER', 'trader')))
+    password: str = field(default_factory=lambda: _parse_db_url().get('password', os.getenv('POSTGRES_PASSWORD', 'trading_secure_password_2024')))
 
     # Connection pool settings
     min_connections: int = field(default_factory=lambda: int(os.getenv('POSTGRES_MIN_CONN', '5')))

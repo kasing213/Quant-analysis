@@ -45,6 +45,7 @@ git check-ignore .env .mcp.json
 - [ ] Config files use `${VARIABLE_NAME}` syntax
 - [ ] Database connection strings use placeholders
 - [ ] API endpoints don't include auth tokens in URLs
+- [ ] Network binding is secure (see Network Security section)
 
 **Check app.yaml:**
 ```bash

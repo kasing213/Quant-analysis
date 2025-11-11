@@ -41,12 +41,29 @@ try:
         record_market_data_update,
         update_websocket_subscribers,
         record_websocket_message,
-        record_websocket_broadcast
+        record_websocket_broadcast,
+        record_websocket_reconnection,
+        update_websocket_connection_status
     )
     PROMETHEUS_AVAILABLE = True
 except ImportError:
     PROMETHEUS_AVAILABLE = False
     logger.warning("Prometheus client not available, metrics disabled")
+    # Create no-op functions when prometheus is not available
+    def initialize_metrics(): pass
+    def record_market_data_update(*args, **kwargs): pass
+    def update_websocket_subscribers(*args, **kwargs): pass
+    def record_websocket_message(*args, **kwargs): pass
+    def record_websocket_broadcast(*args, **kwargs): pass
+    def record_websocket_reconnection(*args, **kwargs): pass
+    def update_websocket_connection_status(*args, **kwargs): pass
+    # Create dummy objects for metrics that are checked
+    class _DummyGauge:
+        def labels(self, **kwargs): return self
+        def set(self, value): pass
+        def inc(self): pass
+    WEBSOCKET_CONNECTIONS = _DummyGauge()
+    MARKET_DATA_UPDATES = _DummyGauge()
 
 # Application startup time for uptime calculation
 startup_time = time.time()
@@ -353,7 +370,9 @@ async def health_check():
         "status": "healthy",
         "service": "portfolio-api",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "uptime_seconds": round(time.time() - startup_time, 2)
+        "uptime_seconds": round(time.time() - startup_time, 2),
+        "metrics_enabled": PROMETHEUS_AVAILABLE,
+        "metrics_endpoint": "/metrics" if PROMETHEUS_AVAILABLE else None
     }
 
 @app.get("/health/database", tags=["Health"])
@@ -421,7 +440,12 @@ async def detailed_health():
                 "postgresql": db_status["postgresql_manager"],
                 "sqlalchemy": db_status["sqlalchemy_async"],
                 "binance_data_manager": binance_data_manager is not None,
-                "redis": market_data_info.get('redis', False) if market_data_info else False
+                "redis": market_data_info.get('redis', False) if market_data_info else False,
+                "prometheus": PROMETHEUS_AVAILABLE
+            },
+            "monitoring": {
+                "metrics_enabled": PROMETHEUS_AVAILABLE,
+                "metrics_endpoint": "/metrics" if PROMETHEUS_AVAILABLE else None
             }
         }
 
