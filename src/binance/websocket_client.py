@@ -11,6 +11,16 @@ from datetime import datetime
 import websockets
 from collections import deque
 
+# Import metrics for monitoring WebSocket reconnections
+try:
+    from src.api.metrics import record_websocket_reconnection, update_websocket_connection_status
+except ImportError:
+    # Graceful fallback if metrics module not available
+    def record_websocket_reconnection(source: str, success: bool):
+        pass
+    def update_websocket_connection_status(source: str, connected: bool):
+        pass
+
 logger = logging.getLogger(__name__)
 
 
@@ -35,12 +45,21 @@ class BinanceWebSocketClient:
         self.data_buffer = {}  # Store recent candles for each symbol
         self.buffer_size = 200  # Keep 200 candles for RSI calculation
 
+        # Reconnection settings
+        self.auto_reconnect = True
+        self.reconnect_delay = 5  # seconds
+        self.max_reconnect_attempts = 0  # 0 = infinite
+        self.reconnect_attempts = 0
+        self.subscribed_streams = []  # Track subscriptions for reconnection
+
     async def connect(self):
         """Connect to Binance WebSocket"""
         try:
             self.ws = await websockets.connect(self.base_url)
             self.running = True
             logger.info(f"Connected to Binance WebSocket ({'testnet' if self.testnet else 'production'})")
+            # Update metrics to show connection is active
+            update_websocket_connection_status(source='binance', connected=True)
         except Exception as e:
             logger.error(f"Failed to connect to Binance WebSocket: {e}")
             raise
@@ -74,6 +93,10 @@ class BinanceWebSocketClient:
 
         if callback:
             self.callbacks[stream] = callback
+
+        # Track subscription for reconnection
+        if stream not in self.subscribed_streams:
+            self.subscribed_streams.append(stream)
 
         logger.info(f"Subscribed to {stream}")
 
@@ -138,33 +161,105 @@ class BinanceWebSocketClient:
         logger.info(f"Subscribed to {stream}")
 
     async def listen(self):
-        """Listen for WebSocket messages and dispatch to callbacks"""
+        """Listen for WebSocket messages and dispatch to callbacks with auto-reconnection"""
+        while self.auto_reconnect and self.running:
+            try:
+                async for message in self.ws:
+                    data = json.loads(message)
+
+                    # Reset reconnect counter on successful message
+                    self.reconnect_attempts = 0
+
+                    # Handle kline data
+                    if 'e' in data and data['e'] == 'kline':
+                        await self._handle_kline(data)
+
+                    # Handle ticker data
+                    elif 'e' in data and data['e'] == '24hrTicker':
+                        await self._handle_ticker(data)
+
+                    # Handle trade data
+                    elif 'e' in data and data['e'] == 'trade':
+                        await self._handle_trade(data)
+
+                    # Handle book ticker
+                    elif 'e' in data and data.get('e') == 'bookTicker':
+                        await self._handle_book_ticker(data)
+
+            except websockets.exceptions.ConnectionClosed as e:
+                logger.warning(f"WebSocket connection closed: {e}")
+                if self.auto_reconnect and self.running:
+                    await self._reconnect()
+                else:
+                    self.running = False
+                    break
+
+            except Exception as e:
+                logger.error(f"Error in WebSocket listener: {e}")
+                if self.auto_reconnect and self.running:
+                    await self._reconnect()
+                else:
+                    self.running = False
+                    break
+
+    async def _reconnect(self):
+        """Attempt to reconnect to WebSocket with exponential backoff"""
+        self.reconnect_attempts += 1
+
+        if self.max_reconnect_attempts > 0 and self.reconnect_attempts > self.max_reconnect_attempts:
+            logger.error(f"Max reconnection attempts ({self.max_reconnect_attempts}) reached, stopping")
+            self.running = False
+            # Record failed reconnection (max retries reached)
+            record_websocket_reconnection(source='binance', success=False)
+            return
+
+        # Calculate backoff delay (exponential with max cap at 60s)
+        delay = min(self.reconnect_delay * (2 ** (self.reconnect_attempts - 1)), 60)
+        logger.info(f"Attempting reconnection #{self.reconnect_attempts} in {delay}s...")
+        await asyncio.sleep(delay)
+
         try:
-            async for message in self.ws:
-                data = json.loads(message)
+            # Close old connection if exists
+            if self.ws:
+                try:
+                    await self.ws.close()
+                except:
+                    pass
 
-                # Handle kline data
-                if 'e' in data and data['e'] == 'kline':
-                    await self._handle_kline(data)
+            # Reconnect
+            await self.connect()
+            logger.info("WebSocket reconnected successfully")
 
-                # Handle ticker data
-                elif 'e' in data and data['e'] == '24hrTicker':
-                    await self._handle_ticker(data)
+            # Resubscribe to all streams
+            await self._resubscribe_all()
 
-                # Handle trade data
-                elif 'e' in data and data['e'] == 'trade':
-                    await self._handle_trade(data)
+            # Record successful reconnection
+            record_websocket_reconnection(source='binance', success=True)
 
-                # Handle book ticker
-                elif 'e' in data and data.get('e') == 'bookTicker':
-                    await self._handle_book_ticker(data)
-
-        except websockets.exceptions.ConnectionClosed:
-            logger.warning("WebSocket connection closed")
-            self.running = False
         except Exception as e:
-            logger.error(f"Error in WebSocket listener: {e}")
-            self.running = False
+            logger.error(f"Reconnection attempt #{self.reconnect_attempts} failed: {e}")
+            # Note: We don't record failure here since we'll retry
+            # Only record failure when max retries reached (see above)
+
+    async def _resubscribe_all(self):
+        """Resubscribe to all previously subscribed streams"""
+        if not self.subscribed_streams:
+            logger.info("No streams to resubscribe")
+            return
+
+        logger.info(f"Resubscribing to {len(self.subscribed_streams)} streams...")
+
+        for stream in self.subscribed_streams:
+            try:
+                subscribe_msg = {
+                    "method": "SUBSCRIBE",
+                    "params": [stream],
+                    "id": 1
+                }
+                await self.ws.send(json.dumps(subscribe_msg))
+                logger.info(f"Resubscribed to {stream}")
+            except Exception as e:
+                logger.error(f"Failed to resubscribe to {stream}: {e}")
 
     async def _handle_kline(self, data: Dict):
         """Process kline data and store in buffer"""
@@ -274,11 +369,30 @@ class BinanceWebSocketClient:
         logger.info(f"Unsubscribed from {stream}")
 
     async def close(self):
-        """Close WebSocket connection"""
+        """Close WebSocket connection and disable auto-reconnect"""
         self.running = False
+        self.auto_reconnect = False  # Disable reconnection
         if self.ws:
             await self.ws.close()
             logger.info("WebSocket connection closed")
+            # Update metrics to show connection is inactive
+            update_websocket_connection_status(source='binance', connected=False)
+
+    def is_connected(self) -> bool:
+        """Check if WebSocket is connected and running"""
+        return self.ws is not None and self.running and not self.ws.closed
+
+    def get_connection_status(self) -> dict:
+        """Get detailed connection status for monitoring"""
+        return {
+            'connected': self.is_connected(),
+            'running': self.running,
+            'auto_reconnect': self.auto_reconnect,
+            'reconnect_attempts': self.reconnect_attempts,
+            'subscribed_streams': len(self.subscribed_streams),
+            'streams': self.subscribed_streams,
+            'active_symbols': list(self.data_buffer.keys())
+        }
 
 
 # Example usage
