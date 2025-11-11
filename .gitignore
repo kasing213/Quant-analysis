@@ -92,4 +92,6 @@ plots/
 *.csv
 *.xlsx
 *.json
-data/railway-mcp-server/
+*.db
+data/
+railway-mcp-server/
