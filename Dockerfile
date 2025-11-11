@@ -43,19 +43,18 @@ COPY --chown=appuser:appuser frontend/ ./frontend/
 # Switch to non-root user
 USER appuser
 
-# Health check
+# Health check - uses PORT env var that Railway provides
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
 
-# Expose port
+# Expose port (Railway will override this with $PORT)
 EXPOSE 8000
 
 # Use production ASGI server
-# Note: For multiple workers, use gunicorn with uvicorn workers instead
-# CMD ["gunicorn", "src.api.main:app", "--workers", "4", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000"]
-CMD ["uvicorn", "src.api.main:app", \
-     "--host", "0.0.0.0", \
-     "--port", "8000", \
-     "--workers", "1", \
-     "--access-log", \
-     "--log-level", "info"]
+# Railway provides PORT env var dynamically - we use it here
+CMD uvicorn src.api.main:app \
+     --host 0.0.0.0 \
+     --port ${PORT:-8000} \
+     --workers 1 \
+     --access-log \
+     --log-level info
