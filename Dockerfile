@@ -40,9 +40,10 @@ COPY --chown=appuser:appuser src/ ./src/
 COPY --chown=appuser:appuser config/ ./config/
 COPY --chown=appuser:appuser frontend/ ./frontend/
 COPY --chown=appuser:appuser healthcheck.sh ./healthcheck.sh
+COPY --chown=appuser:appuser start-railway.sh ./start-railway.sh
 
-# Make healthcheck script executable
-RUN chmod +x /app/healthcheck.sh
+# Make scripts executable
+RUN chmod +x /app/healthcheck.sh /app/start-railway.sh
 
 # Switch to non-root user
 USER appuser
@@ -54,11 +55,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 # Expose port (Railway will override this with $PORT)
 EXPOSE 8000
 
-# Use production ASGI server
-# Railway provides PORT env var dynamically - we use it here
-CMD uvicorn src.api.main:app \
-     --host 0.0.0.0 \
-     --port ${PORT:-8000} \
-     --workers 1 \
-     --access-log \
-     --log-level info
+# Use production ASGI server via startup script
+# The start-railway.sh script properly handles Railway's dynamic PORT variable
+CMD ["/app/start-railway.sh"]
