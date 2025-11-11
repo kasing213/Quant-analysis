@@ -39,13 +39,17 @@ RUN mkdir -p /app/logs /app/data && \
 COPY --chown=appuser:appuser src/ ./src/
 COPY --chown=appuser:appuser config/ ./config/
 COPY --chown=appuser:appuser frontend/ ./frontend/
+COPY --chown=appuser:appuser healthcheck.sh ./healthcheck.sh
+
+# Make healthcheck script executable
+RUN chmod +x /app/healthcheck.sh
 
 # Switch to non-root user
 USER appuser
 
-# Health check - uses PORT env var that Railway provides
+# Health check - uses PORT env var that Railway provides via healthcheck script
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
+    CMD ["/app/healthcheck.sh"]
 
 # Expose port (Railway will override this with $PORT)
 EXPOSE 8000
