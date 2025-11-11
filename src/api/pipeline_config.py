@@ -66,13 +66,25 @@ class RedisConfig:
     port: int
     password: Optional[str]
     db: int
+    enabled: bool = True
 
     def validate(self) -> tuple[bool, Optional[str]]:
-        """Validate Redis configuration"""
+        """
+        Validate Redis configuration.
+
+        Returns True if Redis is disabled OR if configuration is valid.
+        This allows the application to run without Redis.
+        """
+        if not self.enabled:
+            return True, None
+
         if not self.host:
-            return False, "Redis host is required"
-        if not (1 <= self.port <= 65535):
+            # Redis is optional - return True to allow app to continue
+            return True, None
+
+        if self.host and not (1 <= self.port <= 65535):
             return False, "Invalid Redis port"
+
         return True, None
 
     def to_dict(self) -> Dict[str, Any]:
@@ -82,6 +94,7 @@ class RedisConfig:
             "port": self.port,
             "password": self.password,
             "db": self.db,
+            "enabled": self.enabled,
         }
 
 
@@ -157,8 +170,13 @@ class PipelineServiceConfig:
         Get Redis configuration for the current pipeline.
 
         Returns:
-            RedisConfig with pipeline-specific database selection
+            RedisConfig with pipeline-specific database selection.
+            Redis is optional - can be disabled via REDIS_ENABLED=false.
         """
+        # Check if Redis is enabled
+        redis_enabled = os.getenv("REDIS_ENABLED", "false").lower() == "true"
+        redis_host = os.getenv("REDIS_HOST", "")
+
         # Use different Redis databases for different pipelines
         db_map = {
             Pipeline.BINANCE_PAPER: 0,
@@ -166,10 +184,11 @@ class PipelineServiceConfig:
         }
 
         return RedisConfig(
-            host=os.getenv("REDIS_HOST", "localhost"),
+            host=redis_host,
             port=int(os.getenv("REDIS_PORT", "6379")),
             password=os.getenv("REDIS_PASSWORD"),
             db=db_map.get(self.pipeline, 0),
+            enabled=redis_enabled and bool(redis_host),
         )
 
     def get_database_config(self) -> DatabaseConfig:
@@ -243,17 +262,18 @@ class PipelineServiceConfig:
             if not valid:
                 errors.append(f"Binance config: {error}")
 
-        # Validate Redis config (always needed)
+        # Validate Redis config (optional - just validates if enabled)
         redis_config = self.get_redis_config()
         valid, error = redis_config.validate()
         if not valid:
             errors.append(f"Redis config: {error}")
 
-        # Validate Database config (always needed)
+        # Validate Database config (optional - application continues without it)
         db_config = self.get_database_config()
         valid, error = db_config.validate()
-        if not valid:
-            errors.append(f"Database config: {error}")
+        # Database is optional now, so we don't add to errors
+        # if not valid:
+        #     errors.append(f"Database config: {error}")
 
         return len(errors) == 0, errors
 
@@ -284,8 +304,8 @@ class PipelineServiceConfig:
         # Redis
         redis_config = self.get_redis_config()
         summary["services"]["redis"] = {
-            "enabled": True,
-            "host": redis_config.host,
+            "enabled": redis_config.enabled,
+            "host": redis_config.host or "disabled",
             "port": redis_config.port,
             "db": redis_config.db,
             "has_password": bool(redis_config.password),
