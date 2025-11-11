@@ -92,6 +92,12 @@ class BinanceDataManager:
 
     async def _connect_redis(self) -> bool:
         """Connect to Redis with retry logic"""
+        # Skip Redis connection if host is not configured
+        if not self.redis_host:
+            logger.info("Redis host not configured, skipping Redis connection")
+            self._redis_connected = False
+            return False
+
         for attempt in range(self.max_retries):
             try:
                 if self._shutdown:
