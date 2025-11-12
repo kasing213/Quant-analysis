@@ -5,7 +5,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    MPLCONFIGDIR=/tmp/matplotlib
 
 # Create non-root user for security
 RUN groupadd -r appuser && useradd -r -g appuser appuser
@@ -31,9 +32,10 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip install --no-cache-dir -r requirements.txt && \
     pip install --no-cache-dir -r requirements_postgresql.txt
 
-# Create necessary directories
-RUN mkdir -p /app/logs /app/data && \
-    chown -R appuser:appuser /app
+# Create necessary directories including matplotlib cache
+RUN mkdir -p /app/logs /app/data /tmp/matplotlib && \
+    chown -R appuser:appuser /app && \
+    chmod 777 /tmp/matplotlib
 
 # Copy application code
 COPY --chown=appuser:appuser src/ ./src/
