@@ -37,16 +37,21 @@ def _parse_db_url() -> Dict[str, Any]:
         else:
             url = database_url
 
-        # Parse URL format: postgresql://username:password@host:port/database
+        # Parse URL format: postgresql://username:password@host:port/database?params
         from urllib.parse import urlparse, parse_qs
         parsed = urlparse(url)
+
+        # Extract query parameters (like sslmode)
+        query_params = parse_qs(parsed.query)
 
         return {
             'username': parsed.username or '',
             'password': parsed.password or '',
             'host': parsed.hostname or 'localhost',
             'port': parsed.port or 5432,
-            'database': parsed.path.lstrip('/') if parsed.path else 'trading_db'
+            'database': parsed.path.lstrip('/') if parsed.path else 'trading_db',
+            'query_params': query_params,
+            'original_url': database_url  # Store original URL with all parameters
         }
     except Exception as e:
         logger.warning(f"Failed to parse DATABASE_URL: {e}")
@@ -88,8 +93,17 @@ class DatabaseConfig:
 
     @property
     def connection_string(self) -> str:
-        """Generate connection string for asyncpg"""
-        return f"postgresql://{self.username}:{self.password}@{self.host}:{self.port}/{self.database}"
+        """Generate connection string for asyncpg with SSL parameters"""
+        # Check if we have the original DATABASE_URL with parameters
+        parsed_data = _parse_db_url()
+        if parsed_data.get('original_url'):
+            # Use the original URL if it exists (preserves SSL and other params)
+            return parsed_data['original_url']
+        # Otherwise, build connection string and add SSL mode
+        base_url = f"postgresql://{self.username}:{self.password}@{self.host}:{self.port}/{self.database}"
+        if self.ssl_mode and self.ssl_mode != 'disable':
+            return f"{base_url}?sslmode={self.ssl_mode}"
+        return base_url
 
     @property
     def psycopg2_dsn(self) -> str:
