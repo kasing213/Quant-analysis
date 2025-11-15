@@ -98,8 +98,11 @@ class DatabaseConfig:
         parsed_data = _parse_db_url()
         if parsed_data.get('original_url'):
             # Use the original URL if it exists (preserves SSL and other params)
-            return parsed_data['original_url']
+            original_url = parsed_data['original_url']
+            logger.info(f"Using original DATABASE_URL (user: {parsed_data.get('username', 'N/A')})")
+            return original_url
         # Otherwise, build connection string and add SSL mode
+        logger.info(f"Building connection string from components (user: {self.username})")
         base_url = f"postgresql://{self.username}:{self.password}@{self.host}:{self.port}/{self.database}"
         if self.ssl_mode and self.ssl_mode != 'disable':
             return f"{base_url}?sslmode={self.ssl_mode}"
