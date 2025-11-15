@@ -28,8 +28,10 @@ def _parse_db_url() -> Dict[str, Any]:
     """Parse DATABASE_URL into components"""
     database_url = os.getenv('DATABASE_URL', '')
     if not database_url:
+        logger.warning("DATABASE_URL not found in environment variables")
         return {}
 
+    logger.info(f"Parsing DATABASE_URL: {database_url[:50]}...")  # Log first 50 chars
     try:
         # Handle both postgresql:// and postgresql+asyncpg:// URLs
         if database_url.startswith('postgresql+asyncpg://'):
